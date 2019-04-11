@@ -41,18 +41,19 @@ object RefererParserEnrichment extends ParseableEnrichment {
   override def parse(
     c: Json,
     schemaKey: SchemaKey
-  ): ValidatedNel[String, RefererParserConf] = (for {
-    _ <- isParseable(c, schemaKey).leftMap(NonEmptyList.one)
-    // better-monadic-for
-    conf <-
-      (
+  ): ValidatedNel[String, RefererParserConf] =
+    (for {
+      _ <- isParseable(c, schemaKey).leftMap(NonEmptyList.one)
+      // better-monadic-for
+      conf <- (
         CirceUtils.extract[String](c, "parameters", "uri").toValidatedNel,
         CirceUtils.extract[String](c, "parameters", "database").toValidatedNel,
         CirceUtils.extract[List[String]](c, "parameters", "internalDomains").toValidatedNel
-      ).mapN { (uri, db, domains) => (uri, db, domains) }
-      .toEither
-    source <- getDatabaseUri(conf._1, conf._2).leftMap(NonEmptyList.one)
-  } yield RefererParserConf(List((source, localFile)), conf._3)).toValidated
+      ).mapN { (uri, db, domains) =>
+        (uri, db, domains)
+      }.toEither
+      source <- getDatabaseUri(conf._1, conf._2).leftMap(NonEmptyList.one)
+    } yield RefererParserConf((source, localFile), conf._3)).toValidated
 
   /**
    * Creates a RefererParserEnrichment from a RefererParserConf
@@ -61,11 +62,10 @@ object RefererParserEnrichment extends ParseableEnrichment {
    */
   def apply[F[_]: Monad: CreateParser](
     conf: RefererParserConf
-  ): EitherT[F, String, RefererParserEnrichment] = for {
-    db <- EitherT.fromEither[F](
-      conf.filesToCache.headOption.toRight("No files to cache"))
-    p <- EitherT(CreateParser[F].create(db._2)).leftMap(_.getMessage)
-  } yield RefererParserEnrichment(p, conf.internalDomains)
+  ): EitherT[F, String, RefererParserEnrichment] =
+    EitherT(CreateParser[F].create(conf.refererDatabase._2))
+      .leftMap(_.getMessage)
+      .map(p => RefererParserEnrichment(p, conf.internalDomains))
 }
 
 /**

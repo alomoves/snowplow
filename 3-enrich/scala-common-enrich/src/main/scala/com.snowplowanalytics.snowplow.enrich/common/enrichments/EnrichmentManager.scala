@@ -53,7 +53,7 @@ object EnrichmentManager {
    * @return a MaybeCanonicalOutput - i.e. a ValidationNel containing either failure Strings
    */
   def enrichEvent[F[_]: Monad: RegistryLookup: Clock](
-    registry: EnrichmentRegistry,
+    registry: EnrichmentRegistry[F],
     client: Client[F, Json],
     hostEtlVersion: String,
     etlTstamp: DateTime,
@@ -467,13 +467,15 @@ object EnrichmentManager {
     // Extract the event vendor/name/format/version
     val extractSchema: F[Either[String, Unit]] = SchemaEnrichment
       .extractSchema(event, client)
-      .map { _.map { schemaKey =>
-        event.event_vendor = schemaKey.vendor
-        event.event_name = schemaKey.name
-        event.event_format = schemaKey.format
-        event.event_version = schemaKey.version.asString
-        ().asRight
-      } }
+      .map {
+        _.map { schemaKey =>
+          event.event_vendor = schemaKey.vendor
+          event.event_name = schemaKey.name
+          event.event_format = schemaKey.format
+          event.event_version = schemaKey.version.asString
+          ().asRight
+        }
+      }
 
     // Execute the JavaScript scripting enrichment
     val jsScript: Either[String, List[Json]] = registry.getJavascriptScriptEnrichment match {
@@ -518,13 +520,15 @@ object EnrichmentManager {
     val sqlQueryContexts: F[ValidatedNel[String, List[Json]]] =
       registry.getSqlQueryEnrichment match {
         case Some(enrichment) =>
-          customContexts.product(unstructEvent).map(_ match {
-            case (Validated.Valid(cctx), Validated.Valid(ue)) =>
-              enrichment.lookup(event, preparedDerivedContexts, cctx, ue)
-            case _ =>
-              // Skip. Unstruct event or custom context corrupted (event enrichment will fail)
-              Nil.validNel
-          })
+          customContexts
+            .product(unstructEvent)
+            .map(_ match {
+              case (Validated.Valid(cctx), Validated.Valid(ue)) =>
+                enrichment.lookup(event, preparedDerivedContexts, cctx, ue)
+              case _ =>
+                // Skip. Unstruct event or custom context corrupted (event enrichment will fail)
+                Nil.validNel
+            })
         case None => Monad[F].pure(Nil.validNel)
       }
 
@@ -532,13 +536,16 @@ object EnrichmentManager {
     val apiRequestContexts: F[ValidatedNel[String, List[Json]]] =
       registry.getApiRequestEnrichment match {
         case Some(enrichment) =>
-          customContexts.product(unstructEvent).product(sqlQueryContexts).map(_ match {
-            case ((Validated.Valid(cctx), Validated.Valid(ue)), Validated.Valid(sctx)) =>
-              enrichment.lookup(event, preparedDerivedContexts ++ sctx, cctx, ue)
-            case _ =>
-              // Skip. Unstruct event or custom context corrupted, event enrichment will fail anyway
-              Nil.validNel
-          })
+          customContexts
+            .product(unstructEvent)
+            .product(sqlQueryContexts)
+            .map(_ match {
+              case ((Validated.Valid(cctx), Validated.Valid(ue)), Validated.Valid(sctx)) =>
+                enrichment.lookup(event, preparedDerivedContexts ++ sctx, cctx, ue)
+              case _ =>
+                // Skip. Unstruct event or custom context corrupted, event enrichment will fail anyway
+                Nil.validNel
+            })
         case None => Monad[F].pure(Nil.validNel)
       }
 
