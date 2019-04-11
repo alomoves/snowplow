@@ -68,7 +68,7 @@ GEM
       json-schema (~> 2.7.0, >= 2.7.0)
     ipaddress (0.8.3)
     jmespath (1.4.0)
-    jruby-jars (9.2.0.0)
+    jruby-jars (9.2.7.0)
     jruby-rack (1.1.21)
     json (2.0.3-java)
     json-schema (2.7.0)
@@ -80,7 +80,7 @@ GEM
     netrc (0.11.0)
     nokogiri (1.8.2-java)
     public_suffix (2.0.5)
-    rake (12.3.1)
+    rake (12.3.2)
     rest-client (1.8.0)
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 3.0)
@@ -98,7 +98,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.5.0)
     rspec-support (3.5.0)
-    rubyzip (1.2.1)
+    rubyzip (1.2.2)
     simplecov (0.12.0)
       docile (~> 1.1.0)
       json (>= 1.8, < 3)
@@ -138,4 +138,4 @@ RUBY VERSION
    ruby 2.3.1p0 (jruby 9.1.6.0)
 
 BUNDLED WITH
-   1.15.4
+   2.0.1
